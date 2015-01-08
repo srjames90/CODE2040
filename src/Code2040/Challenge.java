@@ -130,7 +130,7 @@ public class Challenge {
         }
         
         
-        //Stage 4: Creating JsonObject at end instead of using a string to represent Json
+        //Stage 4: 
         
         request = buildRequest("http://challenge.code2040.org/api/time");
         try {
