@@ -28,9 +28,7 @@ import org.joda.time.DateTime;
 /**
  *
  * @author Steven
- * 1st iteration, easy solutions
- * All solutions except for stage 4 all commented out because I commented out completed tasks as I went along
- * so that I won't making calls to the same endpoint
+ * 1st iteration of solutions
  */
 public class Challenge {
 
