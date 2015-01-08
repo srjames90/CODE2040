@@ -35,42 +35,36 @@ import org.joda.time.DateTime;
 public class Challenge {
 
     public static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
+    public static String token;
+    public static JsonParser parser = new JsonParser();
+    public static OkHttpClient client = new OkHttpClient();
+    public static Response response;
     /**
      * @param args the command line arguments
      */
     public static void main(String[] args) {
         //I use OkHttp for Android as a singleton, makes network calls easy and beats AsyncTasks in Android
         //for now I'm just making an instance of it
-        OkHttpClient client = new OkHttpClient();
         
-        //construct JSON POST
-        RequestBody body = RequestBody.create(JSON, 
-                "{\"email\":\"srjames90@berkeley.edu\",\"github\":\"http://github.com/srjames90\"}");
-        Request request = new Request.Builder()
-                .url("http://challenge.code2040.org/api/register")
-                .post(body)
-                .build();
+        //construct intitial JSON POST
+        JsonObject json = new JsonObject();
+        json.addProperty("email", "srjames90@berkeley.edu");
+        json.addProperty("github", "http://github.com/srjames90");
+        RequestBody body = RequestBody.create(JSON, json.toString());
+        Request request = buildRequest("http://challenge.code2040.org/api/register", body);
         
         //initialize JSON parser and a string for resulting token from response
-        JsonParser parser = new JsonParser();
-        String token = null;
-        Response response;
         
         try {
             response = client.newCall(request).execute();
             token = ((JsonObject)parser.parse(response.body().string())).get("result").getAsString();
-            System.out.println(token);
         } catch (IOException ex) {
             Logger.getLogger(Challenge.class.getName()).log(Level.SEVERE, null, ex);
-        }
-        RequestBody challengeRbody = RequestBody.create(JSON, "{\"token\":" + "\"" + token + "\"}");
+        }        
+
         //Stage One:
         
-        body = RequestBody.create(JSON, "{\"token\":" + "\"" + token + "\"}");
-        request = new Request.Builder()
-                .url("http://challenge.code2040.org/api/getstring")
-                .post(body)
-                .build();
+        request = buildRequest("http://challenge.code2040.org/api/getstring");
         String reversed = "";
         try {
             response = client.newCall(request).execute();
@@ -80,11 +74,12 @@ public class Challenge {
            Logger.getLogger(Challenge.class.getName()).log(Level.SEVERE, null, ex);
         }
         
-        body = RequestBody.create(JSON, "{\"token\":" + "\"" + token + "\", \"string\":\"" + reversed + "\"}");
-        request = new Request.Builder()
-                .url("http://challenge.code2040.org/api/validatestring")
-                .post(body)
-                .build();
+        
+        json.addProperty("token", token);
+        json.addProperty("string", reversed);
+        
+        body = RequestBody.create(JSON, json.toString());
+        request = buildRequest("http://challenge.code2040.org/api/validatestring", body);
         try {
             response = client.newCall(request).execute();
             System.out.println(response.body().string());
@@ -94,30 +89,20 @@ public class Challenge {
         
         //Stage 2:
         
-        request = new Request.Builder()
-                .url("http://challenge.code2040.org/api/haystack")
-                .post(challengeRbody)
-                .build();
+        request = buildRequest("http://challenge.code2040.org/api/haystack");
         try {
             response = client.newCall(request).execute();
             JsonObject result = ((JsonObject)parser.parse(response.body().string())).get("result").getAsJsonObject();
-            System.out.println(result.toString());
             String needle = result.get("needle").getAsString();
             JsonArray haystack = result.get("haystack").getAsJsonArray();
             for(int x = 0; x < haystack.size(); x++) {
                 if(haystack.get(x).getAsString().equals(needle)) {
-                    request = new Request.Builder()
-                    .url("http://challenge.code2040.org/api/validateneedle")
-                    .post(RequestBody.create(JSON, "{\"token\":" + "\"" + token + "\", \"needle\":" + x + "}"))
-                    .build();
+                    request = buildRequest("http://challenge.code2040.org/api/validateneedle", 
+                            RequestBody.create(JSON, "{\"token\":" + "\"" + token + "\", \"needle\":" + x + "}"));
                     response = client.newCall(request).execute();
                     System.out.println(response.body().string());
-                    //return;
                 }
-            }
-            //System.out.println("no match");
-            
-            
+            } 
         } catch (IOException ex) {
             Logger.getLogger(Challenge.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -125,12 +110,7 @@ public class Challenge {
         
        //Stage 3:
         
-        
-        request = new Request.Builder()
-                .url("http://challenge.code2040.org/api/prefix")
-                .post(challengeRbody)
-                .build();
-        
+        request = buildRequest("http://challenge.code2040.org/api/prefix");        
         try {
             response = client.newCall(request).execute();
             JsonObject result = ((JsonObject)parser.parse(response.body().string())).get("result").getAsJsonObject();
@@ -143,13 +123,10 @@ public class Challenge {
                     noPre.add(e);
                 }
             }
-            request = new Request.Builder()
-                .url("http://challenge.code2040.org/api/validateprefix")
-                .post(RequestBody.create(JSON, "{\"token\":" + "\"" + token + "\", \"array\":" + noPre + "}"))
-                .build();
+            request = buildRequest("http://challenge.code2040.org/api/validateprefix",
+                     RequestBody.create(JSON, "{\"token\":" + "\"" + token + "\", \"array\":" + noPre + "}"));  
             response = client.newCall(request).execute();
-                    System.out.println(response.body().string());           
-            
+            System.out.println(response.body().string());             
         } catch (IOException ex) {
             Logger.getLogger(Challenge.class.getName()).log(Level.SEVERE, null, ex);
         }
@@ -157,11 +134,7 @@ public class Challenge {
         
         //Stage 4: Creating JsonObject at end instead of using a string to represent Json
         
-        request = new Request.Builder()
-                .url("http://challenge.code2040.org/api/time")
-                .post(challengeRbody)
-                .build();
-        
+        request = buildRequest("http://challenge.code2040.org/api/time");
         try {
             response = client.newCall(request).execute();
             JsonObject result = ((JsonObject)parser.parse(response.body().string())).get("result").getAsJsonObject();
@@ -173,10 +146,7 @@ public class Challenge {
             JsonObject str = new JsonObject();
             str.addProperty("token", token);
             str.addProperty("datestamp", dateTime.toString());
-            request = new Request.Builder()
-                .url("http://challenge.code2040.org/api/validatetime")
-                .post(RequestBody.create(JSON, str.toString()))
-                .build();
+            request = buildRequest("http://challenge.code2040.org/api/validatetime", RequestBody.create(JSON, str.toString()));
             response = client.newCall(request).execute();
             System.out.println(response.body().string());           
             
@@ -194,6 +164,17 @@ public class Challenge {
             reversed[length - x - 1] = str.charAt(x);
         }
         return reversed;
+    }
+    
+    public static Request buildRequest(String url, RequestBody body) {
+        return new Request.Builder().url(url).post(body).build();
+    }
+    
+    public static Request buildRequest(String url) {
+        JsonObject json = new JsonObject();
+        json.addProperty("token", token);
+        return new Request.Builder()
+                .url(url).post(RequestBody.create(JSON, json.toString())).build();
     }
     
 }
